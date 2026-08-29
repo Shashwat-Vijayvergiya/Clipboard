@@ -550,7 +550,7 @@ function renderRetrievedClip(clip) {
         <i data-lucide="file-check"></i>
         <div>
           <div style="font-weight: 700;">${escapeHtml(clip.fileName || 'Shared File')}</div>
-          <div style="font-size: 0.75rem; color: #94a3b8;">${formatBytes(clip.fileSize || 0)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">${formatBytes(clip.fileSize || 0)}</div>
         </div>
       </div>
     `;
