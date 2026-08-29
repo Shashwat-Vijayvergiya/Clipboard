@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickClip — Minimalist 4-Digit Fast Sharing</title>
+  <meta name="description" content="Fast clipboard sharing between devices with simple 4-digit codes and auto-expiration.">
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Prism.js for syntax highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="bg-glow"></div>
+
+  <div class="app-shell">
+    
+    <!-- Minimalist Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="zap"></i>
+        </div>
+        <div class="brand-text">
+          <h1>QuickClip</h1>
+          <p>Fast 4-digit clipboard sharing</p>
+        </div>
+      </div>
+
+      <!-- Mode Switcher (Share vs Receive) -->
+      <nav class="mode-switch">
+        <button class="mode-btn active" id="mode-share-btn">
+          <i data-lucide="upload-cloud"></i>
+          <span>Share</span>
+        </button>
+        <button class="mode-btn" id="mode-receive-btn">
+          <i data-lucide="download-cloud"></i>
+          <span>Receive</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Paste Hint -->
+    <div class="quick-hint">
+      <i data-lucide="clipboard"></i>
+      <span>Press <kbd>Ctrl+V</kbd> anywhere on screen to paste instantly</span>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="main-card">
+      
+      <!-- ================= USER 1: SHARE VIEW ================= -->
+      <section class="view-panel active" id="share-view">
+        
+        <!-- COMPOSER STATE (Before Code Generated) -->
+        <div id="composer-container">
+          <!-- Content Type Selector -->
+          <div class="content-type-selector">
+            <button class="type-pill active" data-type="text">
+              <i data-lucide="align-left"></i> Text
+            </button>
+            <button class="type-pill" data-type="code">
+              <i data-lucide="code-2"></i> Code
+            </button>
+            <button class="type-pill" data-type="file">
+              <i data-lucide="file-up"></i> File / Image
+            </button>
+          </div>
+
+          <!-- Input Fields -->
+          <div class="input-area">
+            <!-- Text Box -->
+            <div class="input-pane active" id="pane-text">
+              <textarea id="share-text-input" placeholder="Type, write, or paste anything you want to share..." rows="6"></textarea>
+            </div>
+
+            <!-- Code Box -->
+            <div class="input-pane" id="pane-code">
+              <div class="code-controls">
+                <select id="code-lang">
+                  <option value="javascript">JavaScript / TypeScript</option>
+                  <option value="python">Python</option>
+                  <option value="json">JSON</option>
+                  <option value="html">HTML / CSS</option>
+                </select>
+              </div>
+              <textarea id="share-code-input" class="mono-font" placeholder="Paste your code snippet here..." rows="6"></textarea>
+            </div>
+
+            <!-- File / Image Drop Area -->
+            <div class="input-pane" id="pane-file">
+              <div class="drop-target" id="drop-target">
+                <i data-lucide="cloud-upload" class="drop-icon"></i>
+                <div class="drop-text-main">Drop file or screenshot here</div>
+                <div class="drop-text-sub">or click to browse from device</div>
+                <input type="file" id="file-input-element" class="hidden-input">
+                <div id="file-selected-badge" class="file-selected-badge hidden">
+                  <i data-lucide="file-check"></i>
+                  <span id="file-name-label">filename.png</span>
+                  <span id="file-size-label" class="size-tag">0 KB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Expiration Options (1 min, 5 min, 10 min) -->
+          <div class="expiry-section">
+            <span class="section-label"><i data-lucide="clock"></i> Auto-Expire In:</span>
+            <div class="expiry-button-group">
+              <button type="button" class="exp-btn" data-min="1">1 min</button>
+              <button type="button" class="exp-btn active" data-min="5">5 min</button>
+              <button type="button" class="exp-btn" data-min="10">10 min</button>
+            </div>
+          </div>
+
+          <!-- Generate Action Button -->
+          <button class="primary-btn" id="generate-code-btn">
+            <i data-lucide="sparkles"></i>
+            <span>Generate 4-Digit Code</span>
+          </button>
+        </div>
+
+        <!-- RESULT STATE (After Code Generated) -->
+        <div id="code-result-container" class="code-result-card hidden">
+          <div class="result-header">
+            <span class="success-badge"><i data-lucide="check-circle-2"></i> Ready to Share</span>
+            <div class="live-timer-badge" id="share-timer-badge">
+              <i data-lucide="timer"></i>
+              <span id="share-timer-text">05:00</span>
+            </div>
+          </div>
+
+          <p class="result-instruction">Tell User 2 to enter this 4-digit code:</p>
+
+          <!-- Big 4-Digit PIN Display -->
+          <div class="pin-display-banner" id="pin-display-banner">
+            <div class="digit-box" id="digit-0">-</div>
+            <div class="digit-box" id="digit-1">-</div>
+            <div class="digit-box" id="digit-2">-</div>
+            <div class="digit-box" id="digit-3">-</div>
+            <button class="copy-code-icon-btn" id="copy-generated-code-btn" title="Copy 4-digit code">
+              <i data-lucide="copy"></i>
+            </button>
+          </div>
+
+          <!-- Preview of what was shared -->
+          <div class="shared-summary-card" id="shared-summary-card">
+            <!-- Populated via JS -->
+          </div>
+
+          <div class="result-actions">
+            <button class="secondary-btn" id="create-new-clip-btn">
+              <i data-lucide="plus-circle"></i>
+              <span>Share Another Clip</span>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= USER 2: RECEIVE VIEW ================= -->
+      <section class="view-panel" id="receive-view">
+        
+        <!-- Code Entry Section -->
+        <div class="receive-entry-box">
+          <h2>Enter 4-Digit Code</h2>
+          <p class="receive-subtitle">Type the 4-digit code provided by the sender to access the clipboard</p>
+
+          <!-- 4-Box Pin Input -->
+          <div class="pin-inputs-row">
+            <input type="text" maxlength="1" class="pin-digit-input" id="pin-input-1" inputmode="numeric" autofocus>
+            <input type="text" maxlength="1" class="pin-digit-input" id="pin-input-2" inputmode="numeric">
+            <input type="text" maxlength="1" class="pin-digit-input" id="pin-input-3" inputmode="numeric">
+            <input type="text" maxlength="1" class="pin-digit-input" id="pin-input-4" inputmode="numeric">
+          </div>
+
+          <button class="primary-btn" id="fetch-clip-btn">
+            <i data-lucide="arrow-down-circle"></i>
+            <span>Access Clipboard</span>
+          </button>
+        </div>
+
+        <!-- Retrieved Content Display -->
+        <div id="retrieved-content-card" class="retrieved-card hidden">
+          <div class="retrieved-header">
+            <div class="type-indicator" id="retrieved-type-badge">
+              <i data-lucide="align-left"></i>
+              <span id="retrieved-type-text">Text</span>
+            </div>
+            <div class="live-timer-badge" id="receive-timer-badge">
+              <i data-lucide="timer"></i>
+              <span id="receive-timer-text">05:00</span>
+            </div>
+          </div>
+
+          <!-- Content Viewer -->
+          <div class="retrieved-body" id="retrieved-body">
+            <!-- Injected via JS -->
+          </div>
+
+          <!-- Action Bar (1-Click Copy / Download) -->
+          <div class="retrieved-actions">
+            <button class="primary-btn copy-retrieved-btn" id="copy-retrieved-btn">
+              <i data-lucide="copy"></i>
+              <span>Copy to Clipboard</span>
+            </button>
+            <a href="#" download id="download-retrieved-btn" class="primary-btn download-btn hidden">
+              <i data-lucide="download"></i>
+              <span>Download File</span>
+            </a>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <footer class="app-footer">
+      <span>Auto-purges from memory when expired • No sign up required</span>
+    </footer>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-shelf" id="toast-shelf"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
